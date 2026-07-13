@@ -1,4 +1,4 @@
-# Growfolio
+# FireMap
 
 積立・取り崩しプランナー(React + Vite製)
 
@@ -46,7 +46,7 @@ vercel
 ## 構成
 
 ```
-growfolio/
+firemap/
 ├── index.html          エントリーHTML
 ├── package.json         依存パッケージ・スクリプト
 ├── vite.config.js       Vite設定

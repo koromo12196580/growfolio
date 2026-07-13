@@ -506,7 +506,7 @@ export default function App() {
 
       <div className="ip-header">
         <div>
-          <div className="ip-title">Growfolio</div>
+          <div className="ip-title">FireMap</div>
           <div className="ip-sub">年ごとに異なる投資額・NISA/iDeCo/企業型年金の配分を計画し、将来の資産推移と取り崩しをシミュレーション</div>
         </div>
       </div>
