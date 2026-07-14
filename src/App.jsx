@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BUCKETS, CURRENT_YEAR, DEFAULT_ASSUMPTIONS, DEFAULT_PROFILE, DEFAULT_WITHDRAWAL_SETTINGS, TABS } from "./constants.js";
 import { emptyBucketRow, regenerateRows, sumBucketField } from "./utils/bucketUtils.js";
@@ -6,6 +6,7 @@ import {
   simulateAccumulation, simulateWithdrawal, findAchievementPoint, clampRowsToLimits,
 } from "./utils/simulate.js";
 
+import { useAuth } from "./auth/AuthContext.jsx";
 import ScenarioManager from "./components/ScenarioManager.jsx";
 import GoalCard from "./components/GoalCard.jsx";
 import SettingsPanel from "./components/SettingsPanel.jsx";
@@ -15,8 +16,12 @@ import WithdrawTab from "./components/WithdrawTab.jsx";
 import CompareTab from "./components/CompareTab.jsx";
 import CalculatorTab from "./components/CalculatorTab.jsx";
 import NextStepsCard from "./components/NextStepsCard.jsx";
+import ReportSection from "./components/ReportSection.jsx";
+import AdviceCard from "./components/AdviceCard.jsx";
+import AdBanner from "./components/ads/AdBanner.jsx";
 
 export default function App() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
   const [rows, setRows] = useState(() => regenerateRows(DEFAULT_PROFILE.currentAge, DEFAULT_PROFILE.withdrawalStartAge, CURRENT_YEAR, []));
@@ -25,7 +30,7 @@ export default function App() {
   const [contributionPlans, setContributionPlans] = useState([]);
 
   // ---- 積立設定(毎月いくら×何歳〜何歳)のCRUDと、rowsへの反映 ----
-  const addContributionPlan = () => {
+  const addContributionPlan = useCallback(() => {
     setContributionPlans((prev) => [
       ...prev,
       {
@@ -33,16 +38,19 @@ export default function App() {
         bucket: "tsumitate", monthlyAmount: 0, startAge: profile.currentAge, endAge: profile.withdrawalStartAge,
       },
     ]);
-  };
-  const updateContributionPlan = (id, field, value) => {
+  }, [profile.currentAge, profile.withdrawalStartAge]);
+
+  const updateContributionPlan = useCallback((id, field, value) => {
     setContributionPlans((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
-  };
-  const removeContributionPlan = (id) => {
+  }, []);
+
+  const removeContributionPlan = useCallback((id) => {
     setContributionPlans((prev) => prev.filter((p) => p.id !== id));
-  };
+  }, []);
+
   // 「積立設定を反映」:設定でカバーされている(年齢, 積立先)だけをrowsへ書き込む。
   // カバーされていない年齢・積立先の手入力値はそのまま保持されるため、手入力と競合しない。
-  const applyContributionPlans = () => {
+  const applyContributionPlans = useCallback(() => {
     setRows((prev) =>
       prev.map((r) => {
         const nr = { ...r };
@@ -53,7 +61,7 @@ export default function App() {
         return nr;
       })
     );
-  };
+  }, [contributionPlans]);
 
   // 年齢範囲が変わったら行データを再生成(既存の値は年齢をキーに引き継ぐ)
   useEffect(() => {
@@ -71,9 +79,13 @@ export default function App() {
     assumptions.lifetimeLimit, assumptions.lifetimeGrowthLimit, profile.initialTsumitate, profile.initialGrowth,
   ]);
 
-  const clearContributions = () => {
+  const clearContributions = useCallback(() => {
     setRows((prev) => prev.map((r) => ({ ...r, ...emptyBucketRow() })));
-  };
+  }, []);
+
+  const updateRow = useCallback((age, field, value) => {
+    setRows((prev) => prev.map((r) => (r.age === age ? { ...r, [field]: value } : r)));
+  }, []);
 
   const initialBalances = useMemo(
     () => ({
@@ -121,10 +133,6 @@ export default function App() {
     : initialBalances.tsumitate + initialBalances.growth;
   const nisaGrowthUsed = accResults.length ? accResults[accResults.length - 1].nisaGrowthUsed : initialBalances.growth;
 
-  const updateRow = (age, field, value) => {
-    setRows((prev) => prev.map((r) => (r.age === age ? { ...r, [field]: value } : r)));
-  };
-
   const pgChartData = useMemo(() => {
     const point = (r, phase) => ({
       age: r.age, phase,
@@ -136,17 +144,55 @@ export default function App() {
   }, [accResults, withdrawResult]);
 
   // ---- 保存/読み込み ----
-  const getCurrentData = () => ({ profile, assumptions, rows, withdrawalSettings, contributionPlans });
-  const handleLoadSimulation = (data) => {
+  const getCurrentData = useCallback(
+    () => ({ profile, assumptions, rows, withdrawalSettings, contributionPlans }),
+    [profile, assumptions, rows, withdrawalSettings, contributionPlans]
+  );
+  const handleLoadSimulation = useCallback((data) => {
     if (!data) return;
     setProfile({ ...DEFAULT_PROFILE, ...data.profile });
     setAssumptions({ ...DEFAULT_ASSUMPTIONS, ...data.assumptions });
     setRows(Array.isArray(data.rows) ? data.rows : []);
     setWithdrawalSettings({ ...DEFAULT_WITHDRAWAL_SETTINGS, ...data.withdrawalSettings });
     setContributionPlans(Array.isArray(data.contributionPlans) ? data.contributionPlans : []);
+  }, []);
+
+  // ---- 結果まとめ(共有・PDF・AIアドバイスで共通して使う) ----
+  const finalAsset = sumBucketField(withdrawalStartState, "Balance");
+  const totalGain = finalAsset - sumBucketField(withdrawalStartState, "Principal");
+  const summary = {
+    finalAsset,
+    fireAge: withdrawalStartAge,
+    achievementAge: achievement ? achievement.age : null,
+    totalContribution,
+    totalGain,
+    fourPercentAnnual: finalAsset * 0.04,
+    firstYearWithdrawal: withdrawResult.rows[0] ? withdrawResult.rows[0].withdrawal : 0,
+    depletionAge: withdrawResult.depletionAge,
+    horizonAge: profile.horizonAge,
   };
 
-  const showNextSteps = tab === "growth" || tab === "withdraw";
+  const accumulationYears = Math.max(1, profile.withdrawalStartAge - profile.currentAge);
+  const averageMonthlyContribution = totalContribution / accumulationYears / 12;
+  const adviceContext = useMemo(() => ({
+    currentAge: profile.currentAge, withdrawalStartAge: profile.withdrawalStartAge, horizonAge: profile.horizonAge,
+    targetAmount: profile.targetAmount, targetBasis: profile.targetBasis,
+    achievementAge: achievement ? achievement.age : null,
+    currentTotalAssets, finalAsset,
+    returnRate: assumptions.returnRate, withdrawalReturnRate: assumptions.withdrawalReturnRate, inflationRate: assumptions.inflationRate,
+    nisaLifetimeUsed, nisaLifetimeLimit: assumptions.lifetimeLimit,
+    withdrawalMethod: withdrawalSettings.method, withdrawalRate: withdrawalSettings.rate,
+    depletionAge: withdrawResult.depletionAge,
+    totalContribution, totalGain, averageMonthlyContribution,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    profile.currentAge, profile.withdrawalStartAge, profile.horizonAge, profile.targetAmount, profile.targetBasis,
+    achievement, currentTotalAssets, finalAsset, assumptions.returnRate, assumptions.withdrawalReturnRate, assumptions.inflationRate,
+    nisaLifetimeUsed, assumptions.lifetimeLimit, withdrawalSettings.method, withdrawalSettings.rate,
+    withdrawResult.depletionAge, totalContribution, totalGain, averageMonthlyContribution,
+  ]);
+
+  const showResultsExtras = tab === "growth" || tab === "withdraw";
 
   return (
     <div className="ip-app">
@@ -160,6 +206,8 @@ export default function App() {
       <ScenarioManager getCurrentData={getCurrentData} onLoad={handleLoadSimulation} />
 
       <GoalCard profile={profile} setProfile={setProfile} currentTotalAssets={currentTotalAssets} achievement={achievement} />
+
+      <AdviceCard context={adviceContext} />
 
       <SettingsPanel
         profile={profile} setProfile={setProfile}
@@ -202,7 +250,14 @@ export default function App() {
       {tab === "compare" && <CompareTab />}
       {tab === "calculator" && <CalculatorTab />}
 
-      {showNextSteps && <NextStepsCard />}
+      <AdBanner page={tab} />
+
+      {showResultsExtras && (
+        <>
+          <ReportSection chartData={pgChartData} profile={profile} assumptions={assumptions} summary={summary} />
+          <NextStepsCard />
+        </>
+      )}
     </div>
   );
 }

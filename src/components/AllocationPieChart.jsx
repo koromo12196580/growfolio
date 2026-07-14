@@ -1,10 +1,10 @@
-import React from "react";
+import React, { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { yen } from "../utils/format.js";
 
 // 資産の内訳(口座別)を円グラフ+凡例(口座名・金額・割合)で表示する。③の対応。
 // 「現在資産」「FIRE(取り崩し開始)時点」のどちらでも使えるよう、データを外から受け取る汎用コンポーネント。
-export default function AllocationPieChart({ title, data }) {
+function AllocationPieChart({ title, data }) {
   const filtered = (data || []).filter((d) => d.value > 0);
   const total = filtered.reduce((s, d) => s + d.value, 0);
 
@@ -48,3 +48,5 @@ export default function AllocationPieChart({ title, data }) {
     </div>
   );
 }
+
+export default memo(AllocationPieChart);

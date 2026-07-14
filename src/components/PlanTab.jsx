@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import MoneyInput from "./inputs/MoneyInput.jsx";
 import NisaUsageCard from "./NisaUsageCard.jsx";
 import AllocationPieChart from "./AllocationPieChart.jsx";
+import PlanRow from "./PlanRow.jsx";
 import { BUCKETS } from "../constants.js";
 import { sumBucketField } from "../utils/bucketUtils.js";
-import { computeRowMax, computeAchievementPct } from "../utils/simulate.js";
 import { yen } from "../utils/format.js";
 
 export default function PlanTab({
@@ -88,33 +87,19 @@ export default function PlanTab({
                   <td>-</td>
                 </tr>
               )}
-              {rows.map((r, i) => {
-                const acc = accResults[i];
-                const warn = acc && (BUCKETS.some((b) => acc[b.key + "OverAnnual"]) || acc.nisaLifetimeOver || acc.nisaGrowthLifetimeOver);
-                const rowTotal = sumBucketField(r, "");
-                const pct = acc ? computeAchievementPct(acc.total, acc.age, currentAge, targetAmount, targetBasis, inflationRate) : null;
-                const achieved = pct != null && pct >= 100;
-                return (
-                  <tr key={r.age} className={warn ? "ip-row-warn" : achieved ? "ip-row-achieved" : ""}>
-                    <td>{r.year}年 / {r.age}歳</td>
-                    {BUCKETS.map((b) => (
-                      <td key={b.key}>
-                        <MoneyInput
-                          value={r[b.key]}
-                          onChange={(v) => updateRow(r.age, b.key, v)}
-                          max={acc ? computeRowMax(b.key, assumptions, acc.priorNisaLifetimeUsed, acc.priorNisaGrowthUsed) : undefined}
-                        />
-                      </td>
-                    ))}
-                    <td style={{ fontFamily: "var(--mono)" }}>{yen(rowTotal)}</td>
-                    <td style={{ fontFamily: "var(--mono)", color: "var(--tsumitate)" }}>{acc ? yen(acc.totalGain) : "-"}</td>
-                    <td style={{ fontFamily: "var(--mono)", color: "var(--growth)" }}>{acc ? yen(acc.total) : "-"}</td>
-                    <td style={{ fontFamily: "var(--mono)", color: achieved ? "var(--tsumitate)" : "var(--muted)", fontWeight: achieved ? 700 : 400 }}>
-                      {pct != null ? pct.toFixed(1) + "%" : "-"}
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map((r, i) => (
+                <PlanRow
+                  key={r.age}
+                  row={r}
+                  acc={accResults[i]}
+                  assumptions={assumptions}
+                  currentAge={currentAge}
+                  targetAmount={targetAmount}
+                  targetBasis={targetBasis}
+                  inflationRate={inflationRate}
+                  updateRow={updateRow}
+                />
+              ))}
             </tbody>
           </table>
         </div>

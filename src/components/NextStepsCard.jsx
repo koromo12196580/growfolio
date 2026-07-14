@@ -1,12 +1,16 @@
-import React from "react";
-import { affiliateLinks } from "../data/affiliateLinks.js";
+import React, { useEffect } from "react";
+import { affiliateLinks, validateAffiliateLinks } from "../config/affiliateLinks.js";
+import AffiliateCard from "./AffiliateCard.jsx";
 
-// シミュレーション結果を見た後の「次のステップ」案内。⑥の対応。
-// 広告然としないよう、他のカードと同じデザインでさりげなく証券会社を紹介する。
-// affiliateLinks配列に追加するだけで自動でカードが増える。
-// 将来Google AdSense等を追加する場合は、このコンポーネントの下(または横)に
-// 同じ ip-card スタイルの <AdSlot /> のようなコンポーネントを並べて追加すればよい構成にしてある。
+// シミュレーション結果を見た後の「次のステップ」案内。
+// 広告然としないよう、他のカードと同じデザインでさりげなく証券会社等を紹介する。
+// 表示するリンクはすべて src/config/affiliateLinks.js の1配列で管理しているため、
+// 広告リンクの追加・変更・削除はそのファイルを触るだけで全ページに反映される。
 export default function NextStepsCard() {
+  useEffect(() => {
+    validateAffiliateLinks(); // プレースホルダーURLが残っていないか開発時にコンソール警告する
+  }, []);
+
   if (!affiliateLinks || affiliateLinks.length === 0) return null;
 
   return (
@@ -17,19 +21,7 @@ export default function NextStepsCard() {
       </div>
       <div className="ip-affiliate-grid">
         {affiliateLinks.map((item) => (
-          <div key={item.name} className="ip-affiliate-card">
-            <div style={{ fontWeight: 700, color: "var(--navy)", fontSize: 14 }}>{item.name}</div>
-            <div className="ip-note" style={{ margin: "6px 0 12px" }}>{item.description}</div>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="nofollow sponsored noopener noreferrer"
-              className="ip-btn"
-              style={{ textDecoration: "none", display: "inline-flex" }}
-            >
-              {item.ctaLabel || "口座開設はこちら"}
-            </a>
-          </div>
+          <AffiliateCard key={item.id || item.name} item={item} />
         ))}
       </div>
       <div className="ip-note" style={{ marginTop: 12 }}>

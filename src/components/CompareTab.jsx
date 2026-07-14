@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { listSimulations, loadSimulation } from "../storage/storageAdapter.js";
 import { computeScenarioSummary, mergeSeriesByAge } from "../utils/simulate.js";
 import { yen, manYen } from "../utils/format.js";
@@ -21,12 +22,16 @@ const METRICS = [
 // 保存済みプランを2〜5件選んで、資産推移グラフと主要指標を並べて比較する。④の対応。
 // 各プランの再計算にはutils/simulate.jsのcomputeScenarioSummaryを使い、既存の計算ロジックをそのまま再利用している。
 export default function CompareTab() {
+  const { user } = useAuth();
   const [scenarios, setScenarios] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [summaries, setSummaries] = useState({});
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { listSimulations().then(setScenarios); }, []);
+  useEffect(() => {
+    if (!user) { setScenarios([]); return; }
+    listSimulations(user.id).then(setScenarios);
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +39,7 @@ export default function CompareTab() {
       if (selectedIds.length === 0) { setSummaries({}); return; }
       setLoading(true);
       const entries = await Promise.all(selectedIds.map(async (id) => {
-        const data = await loadSimulation(id);
+        const data = await loadSimulation(user.id, id);
         return [id, data ? computeScenarioSummary(data) : null];
       }));
       if (cancelled) return;
@@ -62,6 +67,14 @@ export default function CompareTab() {
   });
 
   const mergedData = useMemo(() => mergeSeriesByAge(namedSeries), [summaries, selectedIds, scenarios]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!user) {
+    return (
+      <div className="ip-card">
+        <div className="ip-note">プラン比較を利用するには、まず「積立プラン」タブ上部からログインしてプランを保存してください。</div>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -1,8 +1,8 @@
-import React from "react";
+import React, { memo } from "react";
 import { manYen } from "../utils/format.js";
 
 // NISA枠(生涯枠・成長投資枠)の使用済み/残り/使用率をまとめて表示するカード。①の対応。
-export default function NisaUsageCard({ title, used, limit, color }) {
+function NisaUsageCard({ title, used, limit, color }) {
   const remaining = Math.max(0, limit - used);
   const usedPct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
   return (
@@ -28,3 +28,5 @@ export default function NisaUsageCard({ title, used, limit, color }) {
     </div>
   );
 }
+
+export default memo(NisaUsageCard);

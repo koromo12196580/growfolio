@@ -1,8 +1,8 @@
-import React from "react";
+import React, { memo } from "react";
 import MoneyInput from "./inputs/MoneyInput.jsx";
 import { manYen } from "../utils/format.js";
 
-export default function GoalCard({ profile, setProfile, currentTotalAssets, achievement }) {
+function GoalCard({ profile, setProfile, currentTotalAssets, achievement }) {
   const pct = profile.targetAmount > 0 ? (currentTotalAssets / profile.targetAmount) * 100 : 0;
   const barPct = Math.max(0, Math.min(100, pct));
   const blocks = 10;
@@ -46,3 +46,5 @@ export default function GoalCard({ profile, setProfile, currentTotalAssets, achi
     </div>
   );
 }
+
+export default memo(GoalCard);

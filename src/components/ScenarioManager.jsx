@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { listSimulations, saveSimulation, loadSimulation, deleteSimulation } from "../storage/storageAdapter.js";
+import LoginScreen from "./auth/LoginScreen.jsx";
 
-// 保存・名前を付けて保存・読み込み・削除のUI。②の対応。
+// 保存・名前を付けて保存・読み込み・削除のUI。
+// ログインしている場合のみ保存機能を使えるようにし、未ログインの場合はログイン画面を表示する。
 // 実際のストレージ処理はstorage/storageAdapter.jsに分離してあるので、
 // このコンポーネントはUIの状態管理だけを担当する(将来Supabase化してもこのファイルはほぼ変更不要)。
 export default function ScenarioManager({ getCurrentData, onLoad }) {
+  const { user, signOut } = useAuth();
   const [scenarios, setScenarios] = useState([]);
   const [currentId, setCurrentId] = useState(null);
   const [currentName, setCurrentName] = useState("");
@@ -14,11 +18,11 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
   const [message, setMessage] = useState("");
 
   const refresh = async () => {
-    const list = await listSimulations();
-    setScenarios(list);
+    if (!user) { setScenarios([]); return; }
+    setScenarios(await listSimulations(user.id));
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { refresh(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!message) return;
@@ -26,16 +30,26 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
     return () => clearTimeout(t);
   }, [message]);
 
+  if (!user) {
+    return (
+      <div className="ip-card">
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)", marginBottom: 10 }}>保存済みプラン</div>
+        <div className="ip-note" style={{ marginBottom: 14 }}>プランを保存するにはログインが必要です。ログインなしでもシミュレーション自体はそのままご利用いただけます。</div>
+        <LoginScreen />
+      </div>
+    );
+  }
+
   const handleSave = async () => {
     if (!currentId) { setSavingAsNew(true); setNameDraft(""); return; }
-    const meta = await saveSimulation({ id: currentId, name: currentName, data: getCurrentData() });
+    const meta = await saveSimulation({ userId: user.id, id: currentId, name: currentName, data: getCurrentData() });
     setMessage(`「${meta.name}」を保存しました`);
     refresh();
   };
 
   const handleSaveAsConfirm = async () => {
     const name = nameDraft.trim() || `プラン ${new Date().toLocaleDateString("ja-JP")}`;
-    const meta = await saveSimulation({ name, data: getCurrentData() });
+    const meta = await saveSimulation({ userId: user.id, name, data: getCurrentData() });
     setCurrentId(meta.id);
     setCurrentName(meta.name);
     setSavingAsNew(false);
@@ -44,7 +58,7 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
   };
 
   const handleLoad = async (id, name) => {
-    const data = await loadSimulation(id);
+    const data = await loadSimulation(user.id, id);
     if (!data) return;
     onLoad(data);
     setCurrentId(id);
@@ -53,7 +67,7 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
   };
 
   const handleDelete = async (id) => {
-    await deleteSimulation(id);
+    await deleteSimulation(user.id, id);
     if (currentId === id) { setCurrentId(null); setCurrentName(""); }
     setConfirmDeleteId(null);
     refresh();
@@ -61,7 +75,13 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
 
   return (
     <div className="ip-card">
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)", marginBottom: 10 }}>保存済みプラン</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)" }}>保存済みプラン</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="ip-note">{user.email}としてログイン中</span>
+          <button className="ip-btn ip-btn-ghost" style={{ fontSize: 12, padding: "6px 12px" }} onClick={signOut}>ログアウト</button>
+        </div>
+      </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
         <span className="ip-note">
