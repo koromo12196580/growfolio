@@ -3,6 +3,7 @@ import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import ShareResultCard from "./ShareResultCard.jsx";
 import { exportSimulationToPdf } from "../utils/pdfExport.js";
 import { manYen, yen } from "../utils/format.js";
+import { trackEvent } from "../utils/analytics.js";
 
 // シミュレーション結果を見た後の「共有」「PDF保存」をまとめたセクション。
 // PDF/画像出力用に、常にマウントされた小さな資産推移チャートをここに持たせている
@@ -28,6 +29,7 @@ export default function ReportSection({ chartData, profile, assumptions, summary
         depletionAge: summary.depletionAge,
         chartElement: chartRef.current,
       });
+      trackEvent("export_pdf");
     } catch (e) {
       setPdfMessage("PDFの生成に失敗しました(このプレビュー環境では利用できない場合があります。実際にデプロイした環境でお試しください)。");
     } finally {

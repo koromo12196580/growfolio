@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { shareTargets } from "../config/shareTargets.js";
 import { buildShareText, copyTextToClipboard, saveElementAsImage } from "../utils/shareUtils.js";
 import { yen } from "../utils/format.js";
+import { trackEvent } from "../utils/analytics.js";
 
 // シミュレーション結果をSNSで共有するためのカード。
 // 資産推移・FIRE年齢・目標達成年齢・最終資産・年間取り崩し額・運用益をまとめて表示し、
@@ -16,6 +17,7 @@ export default function ShareResultCard({ finalAsset, fireAge, achievementAge, a
 
   const handleCopy = async () => {
     const ok = await copyTextToClipboard(shareUrl);
+    trackEvent("share_click", { method: "copy_url" });
     setCopyMessage(ok ? "URLをコピーしました" : "コピーに失敗しました");
     setTimeout(() => setCopyMessage(""), 2500);
   };
@@ -25,6 +27,7 @@ export default function ShareResultCard({ finalAsset, fireAge, achievementAge, a
     setImageSaving(true);
     try {
       await saveElementAsImage(cardRef.current, "firemap-result.png");
+      trackEvent("share_click", { method: "save_image" });
     } catch (e) {
       setCopyMessage("画像の保存に失敗しました(このプレビュー環境では利用できない場合があります)");
       setTimeout(() => setCopyMessage(""), 3000);
@@ -81,6 +84,7 @@ export default function ShareResultCard({ finalAsset, fireAge, achievementAge, a
               rel="noopener noreferrer"
               className="ip-btn ip-btn-ghost"
               style={{ textDecoration: "none" }}
+              onClick={() => trackEvent("share_click", { method: t.id })}
             >
               {t.label}
             </a>

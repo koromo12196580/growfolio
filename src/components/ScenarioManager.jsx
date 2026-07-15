@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { listSimulations, saveSimulation, loadSimulation, deleteSimulation } from "../storage/storageAdapter.js";
 import LoginScreen from "./auth/LoginScreen.jsx";
+import { trackEvent } from "../utils/analytics.js";
 
 // 保存・名前を付けて保存・読み込み・削除のUI。
 // ログインしている場合のみ保存機能を使えるようにし、未ログインの場合はログイン画面を表示する。
@@ -43,6 +44,7 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
   const handleSave = async () => {
     if (!currentId) { setSavingAsNew(true); setNameDraft(""); return; }
     const meta = await saveSimulation({ userId: user.id, id: currentId, name: currentName, data: getCurrentData() });
+    trackEvent("save_simulation", { method: "overwrite" });
     setMessage(`「${meta.name}」を保存しました`);
     refresh();
   };
@@ -50,6 +52,7 @@ export default function ScenarioManager({ getCurrentData, onLoad }) {
   const handleSaveAsConfirm = async () => {
     const name = nameDraft.trim() || `プラン ${new Date().toLocaleDateString("ja-JP")}`;
     const meta = await saveSimulation({ userId: user.id, name, data: getCurrentData() });
+    trackEvent("save_simulation", { method: "save_as_new" });
     setCurrentId(meta.id);
     setCurrentName(meta.name);
     setSavingAsNew(false);

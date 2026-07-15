@@ -19,6 +19,7 @@ import NextStepsCard from "./components/NextStepsCard.jsx";
 import ReportSection from "./components/ReportSection.jsx";
 import AdviceCard from "./components/AdviceCard.jsx";
 import AdBanner from "./components/ads/AdBanner.jsx";
+import { initAnalytics, trackPageView } from "./utils/analytics.js";
 
 export default function App() {
   const { user } = useAuth();
@@ -27,6 +28,15 @@ export default function App() {
   const [rows, setRows] = useState(() => regenerateRows(DEFAULT_PROFILE.currentAge, DEFAULT_PROFILE.withdrawalStartAge, CURRENT_YEAR, []));
   const [withdrawalSettings, setWithdrawalSettings] = useState(DEFAULT_WITHDRAWAL_SETTINGS);
   const [tab, setTab] = useState("plan");
+
+  // Google Analytics 4 の初期化(本番ビルドのみ)と、タブ切り替え=ページ遷移としての計測
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+  useEffect(() => {
+    const current = TABS.find((t) => t.id === tab);
+    trackPageView(`/${tab}`, current ? `FireMap | ${current.label}` : "FireMap");
+  }, [tab]);
   const [contributionPlans, setContributionPlans] = useState([]);
 
   // ---- 積立設定(毎月いくら×何歳〜何歳)のCRUDと、rowsへの反映 ----
