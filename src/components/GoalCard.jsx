@@ -2,13 +2,15 @@ import React, { memo } from "react";
 import MoneyInput from "./inputs/MoneyInput.jsx";
 import { manYen } from "../utils/format.js";
 
-function GoalCard({ profile, setProfile, currentTotalAssets, achievement }) {
+function GoalCard({ profile, setProfile, currentTotalAssets, achievement, totalContribution, totalGain }) {
   const pct = profile.targetAmount > 0 ? (currentTotalAssets / profile.targetAmount) * 100 : 0;
   const barPct = Math.max(0, Math.min(100, pct));
   const blocks = 10;
   const filled = Math.round((barPct / 100) * blocks);
   const remainingAmount = Math.max(0, profile.targetAmount - currentTotalAssets);
   const remainingYears = achievement ? Math.max(0, achievement.age - profile.currentAge) : null;
+  const principalTotal = currentTotalAssets + (totalContribution || 0);
+  const gainRate = principalTotal > 0 ? ((totalGain || 0) / principalTotal) * 100 : 0;
 
   return (
     <div className="ip-card">
@@ -32,11 +34,29 @@ function GoalCard({ profile, setProfile, currentTotalAssets, achievement }) {
           <div className="ip-stat-value" style={{ color: "var(--tsumitate)" }}>{pct.toFixed(1)}%</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
         {Array.from({ length: blocks }).map((_, i) => (
           <div key={i} style={{ flex: 1, height: 14, borderRadius: 3, background: i < filled ? "var(--tsumitate)" : "#E7E9E2" }} />
         ))}
       </div>
+
+      <div className="ip-grid ip-grid-3" style={{ marginBottom: 12 }}>
+        <div>
+          <div className="ip-stat-label">現在資産</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 17, fontWeight: 600, color: "var(--navy)" }}>{manYen(currentTotalAssets)}</div>
+        </div>
+        <div>
+          <div className="ip-stat-label">累計投資額</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 17, fontWeight: 600, color: "var(--growth)" }}>{manYen(totalContribution || 0)}</div>
+        </div>
+        <div>
+          <div className="ip-stat-label">累計利益(見込み)</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 17, fontWeight: 700, color: "var(--tsumitate)" }}>
+            {manYen(totalGain || 0)}<span style={{ fontSize: 12, fontWeight: 600, marginLeft: 6 }}>({gainRate >= 0 ? "+" : ""}{gainRate.toFixed(1)}%)</span>
+          </div>
+        </div>
+      </div>
+
       <div className="ip-note">
         現在資産 {manYen(currentTotalAssets)} / 目標 {manYen(profile.targetAmount)}(あと{manYen(remainingAmount)})
         {achievement

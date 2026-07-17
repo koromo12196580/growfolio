@@ -96,7 +96,7 @@ firemap/
 ## 重要:公開前に必ず設定してください
 
 1. **アフィリエイトリンク** — `src/config/affiliateLinks.js` の `url` を、A8.net等で実際に発行されたリンクに差し替えてください。プレースホルダーのままだと「準備中」表示になり、クリックできません(誤って「Example Domain」に飛ぶ事故を防ぐためのガードです)。
-2. **ドメイン** — `index.html` / `public/robots.txt` / `public/sitemap.xml` にある `https://example.com/` を、実際に公開するドメインに置き換えてください。
+2. **ドメイン** — `index.html` / `public/robots.txt` / `public/sitemap.xml` は `https://growfolio-kappa.vercel.app/` に設定済みです。ドメインを変更する場合はこの3ファイルを一緒に更新してください。
 3. **ログイン** — 現在は `src/auth/authClient.js` がlocalStorageを使ったスタブ実装です。本番でSupabaseを使う場合は、このファイルの中身を `@supabase/supabase-js` の呼び出しに差し替えてください(関数のシグネチャはSupabase Authに合わせてあります)。
 4. **広告** — Google AdSenseを使う場合は `src/config/adPlacements.js` の `ADSENSE_CLIENT_ID` を設定し、該当ページの `enabled` を `true` にしてください。
 5. **アクセス解析** — Google Analytics 4(測定ID `G-3FNLF9R0GJ`)を導入済みです。ローカル(`npm run dev`)・本番(Vercel等)を問わず常に計測されます。開発者ご自身のアクセスを除外したい場合は、GA4管理画面側の「内部トラフィックの除外(IPアドレスフィルタ)」で対応してください。測定IDを変更したい場合は `src/utils/analytics.js` の `MEASUREMENT_ID` を書き換えてください。

@@ -1,5 +1,4 @@
-# 【重要】example.com は仮のドメインです。実際に公開するドメインに置き換えてください。
 User-agent: *
 Allow: /
 
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://growfolio-kappa.vercel.app/sitemap.xml

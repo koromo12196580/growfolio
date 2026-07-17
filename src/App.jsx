@@ -19,10 +19,12 @@ import NextStepsCard from "./components/NextStepsCard.jsx";
 import ReportSection from "./components/ReportSection.jsx";
 import AdviceCard from "./components/AdviceCard.jsx";
 import AdBanner from "./components/ads/AdBanner.jsx";
-import { initAnalytics, trackPageView } from "./utils/analytics.js";
+import SimpleSimulator from "./components/SimpleSimulator.jsx";
+import { initAnalytics, trackPageView, trackEvent } from "./utils/analytics.js";
 
 export default function App() {
   const { user } = useAuth();
+  const [mode, setMode] = useState("simple"); // "simple" = ①かんたんシミュレーション(初回表示) / "detailed" = 従来の詳細画面
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
   const [rows, setRows] = useState(() => regenerateRows(DEFAULT_PROFILE.currentAge, DEFAULT_PROFILE.withdrawalStartAge, CURRENT_YEAR, []));
@@ -34,9 +36,10 @@ export default function App() {
     initAnalytics();
   }, []);
   useEffect(() => {
+    if (mode === "simple") { trackPageView("/simple", "FireMap | かんたんシミュレーション"); return; }
     const current = TABS.find((t) => t.id === tab);
     trackPageView(`/${tab}`, current ? `FireMap | ${current.label}` : "FireMap");
-  }, [tab]);
+  }, [mode, tab]);
   const [contributionPlans, setContributionPlans] = useState([]);
 
   // ---- 積立設定(毎月いくら×何歳〜何歳)のCRUDと、rowsへの反映 ----
@@ -167,6 +170,27 @@ export default function App() {
     setContributionPlans(Array.isArray(data.contributionPlans) ? data.contributionPlans : []);
   }, []);
 
+  // ①かんたんシミュレーションの入力値を、詳細シミュレーション側へそのまま引き継ぐ。
+  // 特定口座への毎月積立として年間投資額を組み立て、年齢範囲に合わせてrowsを作り直す。
+  const handleGoDetailedFromSimple = useCallback((simple) => {
+    const newWithdrawalStartAge = Math.max(simple.currentAge + 1, profile.withdrawalStartAge);
+    setProfile((prev) => ({
+      ...prev,
+      currentAge: simple.currentAge,
+      withdrawalStartAge: newWithdrawalStartAge,
+      initialTaxable: simple.initialAssets,
+      targetAmount: simple.targetAmount,
+    }));
+    setAssumptions((prev) => ({ ...prev, returnRate: simple.returnRate }));
+    const filledRows = regenerateRows(simple.currentAge, newWithdrawalStartAge, CURRENT_YEAR, []).map((r) => ({
+      ...r,
+      taxable: simple.monthlyContribution * 12,
+    }));
+    setRows(filledRows);
+    setMode("detailed");
+    trackEvent("simple_to_detailed");
+  }, [profile.withdrawalStartAge]);
+
   // ---- 結果まとめ(共有・PDF・AIアドバイスで共通して使う) ----
   const finalAsset = sumBucketField(withdrawalStartState, "Balance");
   const totalGain = finalAsset - sumBucketField(withdrawalStartState, "Principal");
@@ -204,6 +228,20 @@ export default function App() {
 
   const showResultsExtras = tab === "growth" || tab === "withdraw";
 
+  if (mode === "simple") {
+    return (
+      <div className="ip-app">
+        <div className="ip-header">
+          <div>
+            <div className="ip-title">FireMap</div>
+            <div className="ip-sub">まずはかんたん5項目で、将来資産とFIRE目標までの見込みをチェックしてみましょう。</div>
+          </div>
+        </div>
+        <SimpleSimulator onGoDetailed={handleGoDetailedFromSimple} />
+      </div>
+    );
+  }
+
   return (
     <div className="ip-app">
       <div className="ip-header">
@@ -211,11 +249,15 @@ export default function App() {
           <div className="ip-title">FireMap</div>
           <div className="ip-sub">年ごとに異なる投資額・NISA/iDeCo/企業型年金の配分を計画し、将来の資産推移と取り崩しをシミュレーション</div>
         </div>
+        <button className="ip-btn ip-btn-ghost" onClick={() => setMode("simple")}>← かんたんモードに戻る</button>
       </div>
 
       <ScenarioManager getCurrentData={getCurrentData} onLoad={handleLoadSimulation} />
 
-      <GoalCard profile={profile} setProfile={setProfile} currentTotalAssets={currentTotalAssets} achievement={achievement} />
+      <GoalCard
+        profile={profile} setProfile={setProfile} currentTotalAssets={currentTotalAssets} achievement={achievement}
+        totalContribution={totalContribution} totalGain={totalGain}
+      />
 
       <AdviceCard context={adviceContext} />
 
